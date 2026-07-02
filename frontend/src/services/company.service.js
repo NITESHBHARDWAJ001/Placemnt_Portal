@@ -10,9 +10,6 @@ export default {
   dashboard() {
     return api.get("/company/dashboard")
   },
-  listCompanies(params) {
-    return api.get("/admin/companies", { params })
-  },
   approve(companyId) {
     return api.patch(`/admin/companies/${companyId}/approve`)
   },

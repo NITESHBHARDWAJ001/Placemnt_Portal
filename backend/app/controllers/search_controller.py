@@ -33,8 +33,9 @@ class SearchController:
     @role_required(RoleEnum.ADMIN)
     def companies():
         term = request.args.get("q", "")
+        status = request.args.get("status")
         page, per_page = get_pagination_params()
-        items, meta = SearchService.search_companies(term, page, per_page)
+        items, meta = SearchService.search_companies(term, page, per_page, status)
         return success_response("Results fetched", company_schema.dump(items, many=True), meta)
 
     @staticmethod

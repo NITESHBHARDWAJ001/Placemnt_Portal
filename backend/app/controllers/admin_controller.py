@@ -3,11 +3,13 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app.middlewares.role_required import role_required
 from app.schemas.activity_log_schema import ActivityLogSchema
+from app.schemas.application_schema import ApplicationSchema
 from app.schemas.blacklist_schema import BlacklistCreateSchema
 from app.schemas.company_profile_schema import CompanyProfileSchema
 from app.schemas.student_profile_schema import StudentProfileSchema
 from app.services.activity_log_service import ActivityLogService
 from app.services.admin_service import AdminService
+from app.services.application_service import ApplicationService
 from app.services.company_service import CompanyService
 from app.services.dashboard_service import DashboardService
 from app.services.student_service import StudentService
@@ -19,6 +21,7 @@ company_schema = CompanyProfileSchema()
 student_schema = StudentProfileSchema()
 activity_log_schema = ActivityLogSchema()
 blacklist_schema = BlacklistCreateSchema()
+application_schema = ApplicationSchema()
 
 
 class AdminController:
@@ -104,6 +107,16 @@ class AdminController:
         admin_id = get_jwt_identity()
         AdminService.set_active(user_id, admin_id, True)
         return success_response("User activated")
+
+    @staticmethod
+    @jwt_required()
+    @role_required(RoleEnum.ADMIN)
+    def list_applications():
+        page, per_page = get_pagination_params()
+        search = request.args.get("search")
+        status = request.args.get("status")
+        items, meta = ApplicationService.list_all_for_admin(page, per_page, search, status)
+        return success_response("Applications fetched", application_schema.dump(items, many=True), meta)
 
     @staticmethod
     @jwt_required()

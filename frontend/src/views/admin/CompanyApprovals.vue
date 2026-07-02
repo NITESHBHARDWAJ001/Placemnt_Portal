@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, reactive, ref, watch } from "vue"
+import { onMounted, ref, watch } from "vue"
 import SearchBar from "@/components/common/SearchBar.vue"
 import Pagination from "@/components/common/Pagination.vue"
 import StatusBadge from "@/components/common/StatusBadge.vue"
@@ -11,6 +11,8 @@ import { useDebounce } from "@/composables/useDebounce"
 import { useToast } from "@/composables/useToast"
 import { useConfirm } from "@/composables/useConfirm"
 import companyService from "@/services/company.service"
+import adminService from "@/services/admin.service"
+import searchService from "@/services/search.service"
 import { formatDate } from "@/utils/formatters"
 
 const { pagination, applyMeta } = usePagination()
@@ -23,16 +25,16 @@ const error = ref(false)
 const search = ref("")
 const statusFilter = ref("PENDING")
 const debouncedSearch = useDebounce(search)
+const reasonModal = ref({ visible: false, userId: null, reason: "" })
 
 async function load() {
   loading.value = true
   error.value = false
   try {
-    const { data } = await companyService.listCompanies({
+    const { data } = await searchService.companies(debouncedSearch.value || "", {
       page: pagination.page,
       per_page: pagination.per_page,
       status: statusFilter.value || undefined,
-      search: debouncedSearch.value || undefined,
     })
     companies.value = data.data
     applyMeta(data.meta)
@@ -83,6 +85,69 @@ async function handleReject(company) {
     toast.error(e.response?.data?.message || "Action failed")
   }
 }
+
+function openBlacklist(company) {
+  reasonModal.value = { visible: true, userId: company.user_id, reason: "" }
+}
+
+async function submitBlacklist() {
+  if (!reasonModal.value.reason.trim()) {
+    toast.error("Please provide a reason")
+    return
+  }
+  try {
+    await adminService.blacklistUser(reasonModal.value.userId, reasonModal.value.reason)
+    toast.success("Company blacklisted")
+    reasonModal.value.visible = false
+    load()
+  } catch (e) {
+    toast.error(e.response?.data?.message || "Action failed")
+  }
+}
+
+async function handleRevoke(company) {
+  const ok = await confirm({
+    title: "Revoke blacklist?",
+    message: `Restore access for ${company.company_name}.`,
+    confirmText: "Revoke",
+    variant: "primary",
+  })
+  if (!ok) return
+  try {
+    await adminService.revokeBlacklist(company.user_id)
+    toast.success("Blacklist revoked")
+    load()
+  } catch (e) {
+    toast.error(e.response?.data?.message || "Action failed")
+  }
+}
+
+async function handleDeactivate(company) {
+  const ok = await confirm({
+    title: "Deactivate account?",
+    message: `${company.company_name} will not be able to log in.`,
+    confirmText: "Deactivate",
+    variant: "danger",
+  })
+  if (!ok) return
+  try {
+    await adminService.deactivateUser(company.user_id)
+    toast.success("Account deactivated")
+    load()
+  } catch (e) {
+    toast.error(e.response?.data?.message || "Action failed")
+  }
+}
+
+async function handleActivate(company) {
+  try {
+    await adminService.activateUser(company.user_id)
+    toast.success("Account activated")
+    load()
+  } catch (e) {
+    toast.error(e.response?.data?.message || "Action failed")
+  }
+}
 </script>
 
 <template>
@@ -123,6 +188,7 @@ async function handleReject(company) {
               <th>Email</th>
               <th>Registered</th>
               <th>Status</th>
+              <th>Account</th>
               <th class="text-end">Actions</th>
             </tr>
           </thead>
@@ -133,6 +199,11 @@ async function handleReject(company) {
               <td>{{ c.email }}</td>
               <td>{{ formatDate(c.created_at) }}</td>
               <td><StatusBadge :status="c.approval_status" /></td>
+              <td>
+                <span v-if="c.is_blacklisted" class="badge text-bg-danger">Blacklisted</span>
+                <span v-else-if="!c.is_active" class="badge text-bg-secondary">Inactive</span>
+                <span v-else class="badge text-bg-success">Active</span>
+              </td>
               <td class="text-end">
                 <template v-if="c.approval_status === 'PENDING'">
                   <button class="btn btn-sm btn-success me-1" @click="handleApprove(c)">
@@ -142,7 +213,22 @@ async function handleReject(company) {
                     <i class="bi bi-x-lg"></i> Reject
                   </button>
                 </template>
-                <span v-else class="pp-text-muted small">No actions</span>
+                <template v-else>
+                  <button class="btn btn-sm btn-outline-danger me-1" @click="openBlacklist(c)">
+                    <i class="bi bi-slash-circle"></i> Blacklist
+                  </button>
+                  <button class="btn btn-sm btn-outline-secondary me-1" @click="handleRevoke(c)">Revoke</button>
+                  <button
+                    v-if="c.is_active"
+                    class="btn btn-sm btn-outline-warning"
+                    @click="handleDeactivate(c)"
+                  >
+                    Deactivate
+                  </button>
+                  <button v-else class="btn btn-sm btn-outline-success" @click="handleActivate(c)">
+                    Activate
+                  </button>
+                </template>
               </td>
             </tr>
           </tbody>
@@ -152,5 +238,28 @@ async function handleReject(company) {
         <Pagination :page="pagination.page" :total-pages="pagination.total_pages" @change="(p) => (pagination.page = p)" />
       </div>
     </div>
+
+    <div v-if="reasonModal.visible" class="pp-modal-backdrop">
+      <div class="pp-card p-4" style="width: 380px">
+        <h6 class="fw-bold mb-3">Blacklist Reason</h6>
+        <textarea v-model="reasonModal.reason" class="form-control mb-3" rows="3" placeholder="Reason for blacklisting..."></textarea>
+        <div class="d-flex justify-content-end gap-2">
+          <button class="btn btn-light" @click="reasonModal.visible = false">Cancel</button>
+          <button class="btn btn-danger" @click="submitBlacklist">Blacklist</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
+
+<style scoped>
+.pp-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2500;
+}
+</style>

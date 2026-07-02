@@ -10,8 +10,8 @@ import { usePagination } from "@/composables/usePagination"
 import { useDebounce } from "@/composables/useDebounce"
 import { useToast } from "@/composables/useToast"
 import { useConfirm } from "@/composables/useConfirm"
-import studentService from "@/services/student.service"
 import adminService from "@/services/admin.service"
+import searchService from "@/services/search.service"
 
 const { pagination, applyMeta } = usePagination()
 const toast = useToast()
@@ -28,10 +28,9 @@ async function load() {
   loading.value = true
   error.value = false
   try {
-    const { data } = await studentService.listStudents({
+    const { data } = await searchService.students(debouncedSearch.value || "", {
       page: pagination.page,
       per_page: pagination.per_page,
-      search: debouncedSearch.value || undefined,
     })
     students.value = data.data
     applyMeta(data.meta)
@@ -91,6 +90,16 @@ async function handleDeactivate(student) {
     toast.error(e.response?.data?.message || "Action failed")
   }
 }
+
+async function handleActivate(student) {
+  try {
+    await adminService.activateUser(student.user_id)
+    toast.success("Account activated")
+    load()
+  } catch (e) {
+    toast.error(e.response?.data?.message || "Action failed")
+  }
+}
 </script>
 
 <template>
@@ -114,6 +123,7 @@ async function handleDeactivate(student) {
               <th>Branch</th>
               <th>CGPA</th>
               <th>Placement</th>
+              <th>Account</th>
               <th class="text-end">Actions</th>
             </tr>
           </thead>
@@ -124,12 +134,26 @@ async function handleDeactivate(student) {
               <td>{{ s.branch || "-" }}</td>
               <td>{{ s.cgpa ?? "-" }}</td>
               <td><StatusBadge :status="s.placement_status" /></td>
+              <td>
+                <span v-if="s.is_blacklisted" class="badge text-bg-danger">Blacklisted</span>
+                <span v-else-if="!s.is_active" class="badge text-bg-secondary">Inactive</span>
+                <span v-else class="badge text-bg-success">Active</span>
+              </td>
               <td class="text-end">
                 <button class="btn btn-sm btn-outline-danger me-1" @click="openBlacklist(s)">
                   <i class="bi bi-slash-circle"></i> Blacklist
                 </button>
                 <button class="btn btn-sm btn-outline-secondary me-1" @click="handleRevoke(s)">Revoke</button>
-                <button class="btn btn-sm btn-outline-warning" @click="handleDeactivate(s)">Deactivate</button>
+                <button
+                  v-if="s.is_active"
+                  class="btn btn-sm btn-outline-warning"
+                  @click="handleDeactivate(s)"
+                >
+                  Deactivate
+                </button>
+                <button v-else class="btn btn-sm btn-outline-success" @click="handleActivate(s)">
+                  Activate
+                </button>
               </td>
             </tr>
           </tbody>

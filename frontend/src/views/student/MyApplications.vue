@@ -18,6 +18,7 @@ const { pagination, applyMeta } = usePagination()
 const applications = ref([])
 const loading = ref(true)
 const error = ref(false)
+const exporting = ref(false)
 
 async function load() {
   loading.value = true
@@ -51,11 +52,42 @@ async function handleWithdraw(app) {
     toast.error(e.response?.data?.message || "Withdraw failed")
   }
 }
+
+async function handleExport() {
+  exporting.value = true
+  try {
+    const { data } = await applicationService.exportCsv()
+    const url = window.URL.createObjectURL(new Blob([data], { type: "text/csv" }))
+    const link = document.createElement("a")
+    link.href = url
+    link.download = "my_applications.csv"
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.URL.revokeObjectURL(url)
+    toast.success("Export ready — your download has started")
+  } catch (e) {
+    toast.error("Export failed")
+  } finally {
+    exporting.value = false
+  }
+}
 </script>
 
 <template>
   <div>
-    <h3 class="pp-page-title mb-4">My Applications</h3>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h3 class="pp-page-title mb-0">My Applications</h3>
+      <button
+        class="btn btn-outline-primary btn-sm"
+        :disabled="exporting || applications.length === 0"
+        @click="handleExport"
+      >
+        <span v-if="exporting" class="spinner-border spinner-border-sm me-1"></span>
+        <i v-else class="bi bi-download me-1"></i>
+        Export CSV
+      </button>
+    </div>
 
     <div class="pp-card p-3">
       <SkeletonLoader v-if="loading" :rows="5" />

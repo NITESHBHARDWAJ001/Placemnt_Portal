@@ -10,6 +10,7 @@ admin_bp.add_url_rule("/companies", view_func=AdminController.list_companies, me
 admin_bp.add_url_rule("/companies/<int:company_id>/approve", view_func=AdminController.approve_company, methods=["PATCH"])
 admin_bp.add_url_rule("/companies/<int:company_id>/reject", view_func=AdminController.reject_company, methods=["PATCH"])
 admin_bp.add_url_rule("/students", view_func=AdminController.list_students, methods=["GET"])
+admin_bp.add_url_rule("/applications", view_func=AdminController.list_applications, methods=["GET"])
 admin_bp.add_url_rule("/users/<int:user_id>/blacklist", view_func=AdminController.blacklist_user, methods=["PATCH"])
 admin_bp.add_url_rule("/users/<int:user_id>/revoke-blacklist", view_func=AdminController.revoke_blacklist, methods=["PATCH"])
 admin_bp.add_url_rule("/users/<int:user_id>/deactivate", view_func=AdminController.deactivate_user, methods=["PATCH"])

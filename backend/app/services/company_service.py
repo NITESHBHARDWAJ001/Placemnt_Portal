@@ -33,7 +33,7 @@ class CompanyService:
         query = CompanyRepository.query_by_status(status)
         if search:
             like = f"%{search}%"
-            query = query.join(User).filter(
+            query = query.join(User, User.id == CompanyRepository.model.user_id).filter(
                 db.or_(CompanyRepository.model.company_name.ilike(like), User.email.ilike(like))
             )
         return paginate_query(query, page, per_page)

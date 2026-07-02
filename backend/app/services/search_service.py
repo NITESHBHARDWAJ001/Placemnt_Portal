@@ -13,11 +13,15 @@ class SearchService:
         return paginate_query(query, page, per_page)
 
     @staticmethod
-    def search_companies(term, page, per_page):
+    def search_companies(term, page, per_page, status=None):
+        from app.utils.enums import CompanyApprovalStatus
+
         like = f"%{term}%"
-        query = CompanyProfile.query.join(User).filter(
+        query = CompanyProfile.query.join(User, User.id == CompanyProfile.user_id).filter(
             db.or_(CompanyProfile.company_name.ilike(like), User.email.ilike(like))
         )
+        if status:
+            query = query.filter(CompanyProfile.approval_status == CompanyApprovalStatus(status))
         return paginate_query(query, page, per_page)
 
     @staticmethod

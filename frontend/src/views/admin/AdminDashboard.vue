@@ -49,7 +49,10 @@ const driveData = computed(() => Object.values(stats.value?.drives_by_status || 
           <StatCard label="Pending Companies" :value="stats.pending_companies" icon="bi-hourglass-split" color="warning" />
         </div>
         <div class="col-6 col-lg-3">
-          <StatCard label="Pending Drives" :value="stats.pending_drives" icon="bi-briefcase" color="warning" />
+          <StatCard label="Total Drives" :value="stats.total_drives" icon="bi-briefcase" color="info" />
+        </div>
+        <div class="col-6 col-lg-3">
+          <StatCard label="Pending Drives" :value="stats.pending_drives" icon="bi-hourglass-split" color="warning" />
         </div>
         <div class="col-6 col-lg-3">
           <StatCard label="Total Applications" :value="stats.total_applications" icon="bi-file-earmark-text" color="primary" />

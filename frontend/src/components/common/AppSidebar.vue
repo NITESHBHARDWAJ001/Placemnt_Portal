@@ -12,6 +12,8 @@ const menus = {
     { to: "/admin/companies", icon: "bi-building", label: "Companies" },
     { to: "/admin/drives", icon: "bi-briefcase", label: "Drives" },
     { to: "/admin/students", icon: "bi-people", label: "Students" },
+    { to: "/admin/applications", icon: "bi-file-earmark-text", label: "Applications" },
+    { to: "/admin/reports", icon: "bi-bar-chart-line", label: "Reports" },
     { to: "/admin/activity-logs", icon: "bi-clock-history", label: "Activity Logs" },
   ],
   COMPANY: [

@@ -29,7 +29,4 @@ export default {
   dashboard() {
     return api.get("/student/dashboard")
   },
-  listStudents(params) {
-    return api.get("/admin/students", { params })
-  },
 }

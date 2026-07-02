@@ -31,5 +31,11 @@ class CompanyProfileSchema(Schema):
     def get_email(self, obj):
         return obj.user.email if obj.user else None
 
+    def get_is_active(self, obj):
+        return obj.user.is_active if obj.user else None
+
+    def get_is_blacklisted(self, obj):
+        return obj.user.is_blacklisted if obj.user else None
+
     def get_status(self, obj):
         return obj.approval_status.value if hasattr(obj.approval_status, "value") else obj.approval_status

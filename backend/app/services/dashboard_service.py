@@ -18,6 +18,7 @@ class DashboardService:
         pending_companies = CompanyProfile.query.filter_by(
             approval_status=CompanyApprovalStatus.PENDING
         ).count()
+        total_drives = PlacementDrive.query.count()
         pending_drives = PlacementDrive.query.filter_by(status=DriveStatus.PENDING).count()
         total_applications = Application.query.count()
         total_selections = Application.query.filter_by(status=ApplicationStatus.SELECTED).count()
@@ -37,6 +38,7 @@ class DashboardService:
             "total_students": total_students,
             "total_companies": total_companies,
             "pending_companies": pending_companies,
+            "total_drives": total_drives,
             "pending_drives": pending_drives,
             "total_applications": total_applications,
             "total_selections": total_selections,

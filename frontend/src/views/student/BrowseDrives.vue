@@ -22,6 +22,7 @@ const appliedDriveIds = ref(new Set())
 const loading = ref(true)
 const error = ref(false)
 const search = ref("")
+const eligibleOnly = ref(false)
 const debouncedSearch = useDebounce(search)
 
 async function load() {
@@ -29,7 +30,12 @@ async function load() {
   error.value = false
   try {
     const [drivesRes, applicationsRes] = await Promise.all([
-      driveService.listPublic({ page: pagination.page, per_page: pagination.per_page, search: debouncedSearch.value || undefined }),
+      driveService.listPublic({
+        page: pagination.page,
+        per_page: pagination.per_page,
+        search: debouncedSearch.value || undefined,
+        eligible_only: eligibleOnly.value || undefined,
+      }),
       applicationService.myApplications({ per_page: 100 }),
     ])
     drives.value = drivesRes.data.data
@@ -42,7 +48,7 @@ async function load() {
   }
 }
 onMounted(load)
-watch(debouncedSearch, () => {
+watch([debouncedSearch, eligibleOnly], () => {
   pagination.page = 1
   load()
 })
@@ -73,12 +79,27 @@ async function handleApply(drive) {
     <h3 class="pp-page-title mb-4">Browse Drives</h3>
 
     <div class="pp-card p-3 mb-3">
-      <SearchBar v-model="search" placeholder="Search by title or role..." />
+      <div class="row g-2 align-items-center">
+        <div class="col-md-8">
+          <SearchBar v-model="search" placeholder="Search by title or role..." />
+        </div>
+        <div class="col-md-4">
+          <div class="form-check">
+            <input id="eligibleOnly" v-model="eligibleOnly" class="form-check-input" type="checkbox" />
+            <label class="form-check-label small" for="eligibleOnly">Show eligible drives only</label>
+          </div>
+        </div>
+      </div>
     </div>
 
     <SkeletonLoader v-if="loading" :rows="6" />
     <ErrorState v-else-if="error" @retry="load" />
-    <EmptyState v-else-if="drives.length === 0" icon="bi-briefcase" title="No drives available" message="Check back later for new opportunities" />
+    <EmptyState
+      v-else-if="drives.length === 0"
+      icon="bi-briefcase"
+      title="No drives available"
+      :message="eligibleOnly ? 'No drives match your eligibility right now — try turning off the filter' : 'Check back later for new opportunities'"
+    />
     <template v-else>
       <div class="row g-3">
         <div class="col-md-6 col-xl-4" v-for="d in drives" :key="d.id">

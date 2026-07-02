@@ -109,6 +109,23 @@ class ApplicationService:
         return paginate_query(query, page, per_page)
 
     @staticmethod
+    def list_all_for_admin(page, per_page, search=None, status=None):
+        query = ApplicationRepository.model.query
+
+        if search or status:
+            from app.models import StudentProfile, User
+
+            query = query.join(StudentProfile).join(User, User.id == StudentProfile.user_id)
+            if search:
+                like = f"%{search}%"
+                query = query.filter(db.or_(User.name.ilike(like), User.email.ilike(like)))
+            if status:
+                query = query.filter(ApplicationRepository.model.status == ApplicationStatus(status))
+
+        query = query.order_by(ApplicationRepository.model.applied_at.desc())
+        return paginate_query(query, page, per_page)
+
+    @staticmethod
     def get_owned_by_company(application_id, company_profile_id):
         application = ApplicationRepository.get_by_id(application_id)
         if application is None:

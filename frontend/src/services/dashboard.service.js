@@ -13,4 +13,7 @@ export default {
   activityLogs(params) {
     return api.get("/admin/activity-logs", { params })
   },
+  adminReports() {
+    return api.get("/admin/reports/summary")
+  },
 }
