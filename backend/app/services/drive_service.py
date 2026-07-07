@@ -4,6 +4,7 @@ from app.extensions import db
 from app.repositories.drive_repository import DriveRepository
 from app.services.activity_log_service import ActivityLogService
 from app.services.company_service import CompanyService
+from app.services.dashboard_service import DashboardService
 from app.utils.enums import DriveStatus, NotificationType
 from app.utils.exceptions import ForbiddenError, NotFoundError
 from app.utils.pagination import paginate_query
@@ -28,6 +29,8 @@ class DriveService:
         ActivityLogService.log(
             company_profile.user_id, "DRIVE_CREATED", "PlacementDrive", drive.id, drive.title
         )
+        DashboardService.invalidate_admin_caches()
+        DashboardService.invalidate_company_cache(company_profile.id)
         return drive
 
     @staticmethod
@@ -57,6 +60,8 @@ class DriveService:
         ActivityLogService.log(
             drive.company_profile.user_id, "DRIVE_UPDATED", "PlacementDrive", drive.id, "Drive edited, pending re-approval"
         )
+        DashboardService.invalidate_admin_caches()
+        DashboardService.invalidate_company_cache(company_profile_id)
         return drive
 
     @staticmethod
@@ -64,6 +69,8 @@ class DriveService:
         drive = DriveService.get_owned_drive(drive_id, company_profile_id)
         db.session.delete(drive)
         db.session.commit()
+        DashboardService.invalidate_admin_caches()
+        DashboardService.invalidate_company_cache(company_profile_id)
 
     @staticmethod
     def list_for_company(company_profile_id, page, per_page):
@@ -135,6 +142,8 @@ class DriveService:
             NotificationType.SUCCESS,
         )
         ActivityLogService.log(admin_user_id, "DRIVE_APPROVED", "PlacementDrive", drive.id)
+        DashboardService.invalidate_admin_caches()
+        DashboardService.invalidate_company_cache(drive.company_profile_id)
         return drive
 
     @staticmethod
@@ -154,6 +163,8 @@ class DriveService:
             NotificationType.ERROR,
         )
         ActivityLogService.log(admin_user_id, "DRIVE_REJECTED", "PlacementDrive", drive.id)
+        DashboardService.invalidate_admin_caches()
+        DashboardService.invalidate_company_cache(drive.company_profile_id)
         return drive
 
     @staticmethod

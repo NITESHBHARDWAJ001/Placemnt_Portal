@@ -10,6 +10,7 @@ from app.models.interview import Interview
 from app.models.notification import Notification
 from app.models.blacklist_log import BlacklistLog
 from app.models.activity_log import ActivityLog
+from app.models.export_job import ExportJob
 
 __all__ = [
     "User",
@@ -25,4 +26,5 @@ __all__ = [
     "Notification",
     "BlacklistLog",
     "ActivityLog",
+    "ExportJob",
 ]

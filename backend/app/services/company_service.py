@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from app.extensions import db
 from app.repositories.company_repository import CompanyRepository
 from app.services.activity_log_service import ActivityLogService
+from app.services.dashboard_service import DashboardService
 from app.services.notification_service import NotificationService
 from app.utils.enums import CompanyApprovalStatus, NotificationType
 from app.utils.exceptions import NotFoundError, ValidationError
@@ -53,6 +54,7 @@ class CompanyService:
             NotificationType.SUCCESS,
         )
         ActivityLogService.log(admin_user_id, "COMPANY_APPROVED", "CompanyProfile", profile.id)
+        DashboardService.invalidate_admin_caches()
         return profile
 
     @staticmethod
@@ -70,6 +72,7 @@ class CompanyService:
             NotificationType.ERROR,
         )
         ActivityLogService.log(admin_user_id, "COMPANY_REJECTED", "CompanyProfile", profile.id)
+        DashboardService.invalidate_admin_caches()
         return profile
 
     @staticmethod

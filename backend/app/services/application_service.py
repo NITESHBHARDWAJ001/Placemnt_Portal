@@ -2,6 +2,7 @@ from app.extensions import db
 from app.repositories.application_repository import ApplicationRepository
 from app.repositories.drive_repository import DriveRepository
 from app.services.activity_log_service import ActivityLogService
+from app.services.dashboard_service import DashboardService
 from app.services.notification_service import NotificationService
 from app.services.resume_service import ResumeService
 from app.utils.enums import ApplicationStatus, NotificationType, PlacementStatus
@@ -47,6 +48,9 @@ class ApplicationService:
         ActivityLogService.log(
             student_profile.user_id, "APPLICATION_SUBMITTED", "Application", application.id
         )
+        DashboardService.invalidate_admin_caches()
+        DashboardService.invalidate_company_cache(drive.company_profile_id)
+        DashboardService.invalidate_student_cache(student_profile.id)
         return application
 
     @staticmethod
@@ -60,6 +64,9 @@ class ApplicationService:
             raise ValidationError("Cannot withdraw an application that is already finalized")
         application.status = ApplicationStatus.WITHDRAWN
         db.session.commit()
+        DashboardService.invalidate_admin_caches()
+        DashboardService.invalidate_company_cache(application.drive.company_profile_id)
+        DashboardService.invalidate_student_cache(student_profile_id)
         return application
 
     @staticmethod
@@ -71,9 +78,7 @@ class ApplicationService:
 
     @staticmethod
     def list_all_for_student(student_profile_id):
-        """Unpaginated — used for CSV export. Phase 2 will run this inside a
-        Celery task instead of the request/response cycle; the query itself
-        does not change."""
+        """Unpaginated — used by the async CSV export Celery task."""
         return ApplicationRepository.query_by_student(student_profile_id).order_by(
             ApplicationRepository.model.applied_at.desc()
         ).all()
@@ -154,4 +159,7 @@ class ApplicationService:
             application.id,
             application.status.value,
         )
+        DashboardService.invalidate_admin_caches()
+        DashboardService.invalidate_company_cache(company_profile_id)
+        DashboardService.invalidate_student_cache(application.student_profile_id)
         return application

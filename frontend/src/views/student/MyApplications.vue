@@ -56,18 +56,10 @@ async function handleWithdraw(app) {
 async function handleExport() {
   exporting.value = true
   try {
-    const { data } = await applicationService.exportCsv()
-    const url = window.URL.createObjectURL(new Blob([data], { type: "text/csv" }))
-    const link = document.createElement("a")
-    link.href = url
-    link.download = "my_applications.csv"
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    window.URL.revokeObjectURL(url)
-    toast.success("Export ready — your download has started")
+    await applicationService.triggerExport()
+    toast.success("Export started — you'll get a notification when it's ready to download")
   } catch (e) {
-    toast.error("Export failed")
+    toast.error(e.response?.data?.message || "Could not start export")
   } finally {
     exporting.value = false
   }

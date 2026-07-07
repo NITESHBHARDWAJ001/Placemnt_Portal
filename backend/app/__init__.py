@@ -17,6 +17,7 @@ def create_app(config_object=None):
 
     os.makedirs(app.instance_path, exist_ok=True)
     os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
+    os.makedirs(app.config["EXPORT_FOLDER"], exist_ok=True)
 
     db.init_app(app)
     migrate.init_app(app, db)
@@ -24,6 +25,10 @@ def create_app(config_object=None):
     ma.init_app(app)
     bcrypt.init_app(app)
     cors.init_app(app, resources={r"/api/*": {"origins": app.config["CORS_ORIGINS"]}}, supports_credentials=True)
+
+    from app.celery_app import init_celery
+
+    init_celery(app)
 
     configure_logger(app)
     register_request_logger(app)

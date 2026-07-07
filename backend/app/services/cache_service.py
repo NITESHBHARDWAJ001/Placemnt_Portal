@@ -1,27 +1,64 @@
-"""Phase-2 placeholder.
+"""Redis-backed cache service.
 
-In Phase 2 this module will wrap Redis (get/set/delete/expire) so that
-dashboard stats, drive listings, etc. can be cached transparently.
-Every method is a safe no-op in Phase 1 so calling code never needs to
-change when Redis is plugged in.
+Fails open on purpose: if Redis is unreachable for any reason, every method
+degrades to a no-op / cache-miss instead of raising, so the app keeps working
+(just without the speed-up) rather than going down because a cache is offline.
 """
+
+import json
+import logging
+
+import redis
+from flask import current_app
+
+logger = logging.getLogger(__name__)
+
+_client = None
+_client_url = None
+
+
+def _get_client():
+    global _client, _client_url
+    url = current_app.config["REDIS_URL"]
+    if _client is None or _client_url != url:
+        _client = redis.from_url(
+            url, decode_responses=True, socket_connect_timeout=2, socket_timeout=2
+        )
+        _client_url = url
+    return _client
 
 
 class CacheService:
-    enabled = False
+    @staticmethod
+    def get(key):
+        try:
+            raw = _get_client().get(key)
+            return json.loads(raw) if raw is not None else None
+        except Exception as e:
+            logger.debug(f"[CacheService] get miss for {key}: {e}")
+            return None
 
-    @classmethod
-    def get(cls, key):
-        return None
+    @staticmethod
+    def set(key, value, ttl_seconds=None):
+        try:
+            ttl = ttl_seconds or current_app.config["CACHE_DEFAULT_TTL_SECONDS"]
+            _get_client().set(key, json.dumps(value), ex=ttl)
+        except Exception as e:
+            logger.debug(f"[CacheService] set skipped for {key}: {e}")
 
-    @classmethod
-    def set(cls, key, value, ttl_seconds=300):
-        return None
+    @staticmethod
+    def delete(key):
+        try:
+            _get_client().delete(key)
+        except Exception as e:
+            logger.debug(f"[CacheService] delete skipped for {key}: {e}")
 
-    @classmethod
-    def delete(cls, key):
-        return None
-
-    @classmethod
-    def delete_pattern(cls, pattern):
-        return None
+    @staticmethod
+    def delete_pattern(pattern):
+        try:
+            client = _get_client()
+            keys = list(client.scan_iter(match=pattern, count=100))
+            if keys:
+                client.delete(*keys)
+        except Exception as e:
+            logger.debug(f"[CacheService] delete_pattern skipped for {pattern}: {e}")

@@ -26,6 +26,7 @@ class BaseConfig:
     CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "http://localhost:5173").split(",")
 
     UPLOAD_FOLDER = os.path.join(BASE_DIR, os.environ.get("UPLOAD_FOLDER", "uploads/resumes"))
+    EXPORT_FOLDER = os.path.join(BASE_DIR, os.environ.get("EXPORT_FOLDER", "uploads/exports"))
     MAX_CONTENT_LENGTH = int(os.environ.get("MAX_CONTENT_LENGTH_MB", 5)) * 1024 * 1024
     ALLOWED_RESUME_EXTENSIONS = {"pdf"}
 
@@ -37,8 +38,19 @@ class BaseConfig:
     PAGINATION_DEFAULT_PER_PAGE = 10
     PAGINATION_MAX_PER_PAGE = 100
 
-    # ---- Phase 2 placeholders (unused in Phase 1) ----
+    # ---- Redis + Celery ----
     REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
     CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", "redis://localhost:6379/0")
-    CELERY_RESULT_BACKEND = os.environ.get("CELERY_RESULT_BACKEND", "redis://localhost:6379/0")
-    CACHE_ENABLED = False
+    CELERY_RESULT_BACKEND = os.environ.get("CELERY_RESULT_BACKEND", "redis://localhost:6379/1")
+    CACHE_ENABLED = True
+    CACHE_DEFAULT_TTL_SECONDS = int(os.environ.get("CACHE_DEFAULT_TTL_SECONDS", 120))
+
+    # ---- SMTP ----
+    MAIL_SERVER = os.environ.get("MAIL_SERVER")
+    MAIL_PORT = int(os.environ.get("MAIL_PORT", 587))
+    MAIL_USE_TLS = os.environ.get("MAIL_USE_TLS", "true").lower() == "true"
+    MAIL_USERNAME = os.environ.get("MAIL_USERNAME")
+    MAIL_PASSWORD = os.environ.get("MAIL_PASSWORD")
+    MAIL_DEFAULT_SENDER = os.environ.get("MAIL_DEFAULT_SENDER") or MAIL_USERNAME
+
+    ADMIN_REMINDER_WINDOW_DAYS = int(os.environ.get("ADMIN_REMINDER_WINDOW_DAYS", 2))

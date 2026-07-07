@@ -1,14 +1,16 @@
-from flask import Response, request
+from flask import request, send_file
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
+from app.extensions import db
 from app.middlewares.role_required import role_required
+from app.models import ExportJob
 from app.schemas.application_schema import ApplicationCreateSchema, ApplicationSchema, ApplicationStatusUpdateSchema
 from app.services.application_service import ApplicationService
 from app.services.company_service import CompanyService
 from app.services.student_service import StudentService
 from app.utils.api_response import success_response
-from app.utils.csv_export import build_applications_csv
 from app.utils.enums import RoleEnum
+from app.utils.exceptions import ForbiddenError, NotFoundError, ValidationError
 from app.utils.pagination import get_pagination_params
 
 application_schema = ApplicationSchema()
@@ -49,20 +51,55 @@ class ApplicationController:
     @staticmethod
     @jwt_required()
     @role_required(RoleEnum.STUDENT)
-    def export_my_applications():
-        """Synchronous CSV export for Phase 1. Phase 2 will move the CSV
-        generation into a Celery task and notify the user when it's ready,
-        without touching ApplicationService.list_all_for_student or
-        build_applications_csv."""
+    def trigger_export():
+        """Kicks off an async CSV export via Celery and returns immediately.
+        The student gets an in-app notification (with a download link) once
+        the worker finishes."""
+        from app.tasks.export_tasks import export_applications_csv
+
         user_id = get_jwt_identity()
         profile = StudentService.get_profile_by_user_id(user_id)
-        applications = ApplicationService.list_all_for_student(profile.id)
-        csv_content = build_applications_csv(applications)
-        return Response(
-            csv_content,
-            mimetype="text/csv",
-            headers={"Content-Disposition": "attachment; filename=my_applications.csv"},
+
+        job = ExportJob(user_id=user_id, job_type="APPLICATIONS_CSV", status="PENDING")
+        db.session.add(job)
+        db.session.commit()
+
+        export_applications_csv.delay(job.id, profile.id, user_id)
+
+        return success_response(
+            "Export started — you'll be notified when it's ready",
+            {"job_id": job.id, "status": job.status},
+            status_code=202,
         )
+
+    @staticmethod
+    @jwt_required()
+    @role_required(RoleEnum.STUDENT)
+    def export_status(job_id):
+        user_id = get_jwt_identity()
+        job = ExportJob.query.get(job_id)
+        if job is None:
+            raise NotFoundError("Export job not found")
+        if str(job.user_id) != str(user_id):
+            raise ForbiddenError("You do not have access to this export")
+        return success_response(
+            "Export status fetched",
+            {"job_id": job.id, "status": job.status, "completed_at": job.completed_at},
+        )
+
+    @staticmethod
+    @jwt_required()
+    @role_required(RoleEnum.STUDENT)
+    def download_export(job_id):
+        user_id = get_jwt_identity()
+        job = ExportJob.query.get(job_id)
+        if job is None:
+            raise NotFoundError("Export job not found")
+        if str(job.user_id) != str(user_id):
+            raise ForbiddenError("You do not have access to this export")
+        if job.status != "COMPLETED" or not job.file_path:
+            raise ValidationError("Export is not ready yet")
+        return send_file(job.file_path, mimetype="text/csv", as_attachment=True, download_name="my_applications.csv")
 
     @staticmethod
     @jwt_required()

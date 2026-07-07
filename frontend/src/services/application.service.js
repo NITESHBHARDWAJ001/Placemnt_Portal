@@ -10,8 +10,14 @@ export default {
   myApplications(params) {
     return api.get("/applications/mine", { params })
   },
-  exportCsv() {
-    return api.get("/applications/export", { responseType: "blob" })
+  triggerExport() {
+    return api.post("/applications/export")
+  },
+  exportStatus(jobId) {
+    return api.get(`/applications/export/${jobId}/status`)
+  },
+  downloadExport(jobId) {
+    return api.get(`/applications/export/${jobId}/download`, { responseType: "blob" })
   },
   companyApplicants(params) {
     return api.get("/applications/company", { params })

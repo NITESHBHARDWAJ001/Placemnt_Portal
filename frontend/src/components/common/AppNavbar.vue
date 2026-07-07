@@ -5,6 +5,7 @@ import { useAuthStore } from "@/stores/auth.store"
 import { useNotificationStore } from "@/stores/notification.store"
 import { useUiStore } from "@/stores/ui.store"
 import { initials } from "@/utils/formatters"
+import applicationService from "@/services/application.service"
 
 const auth = useAuthStore()
 const notifications = useNotificationStore()
@@ -33,6 +34,33 @@ async function toggleNotifications() {
   showNotifications.value = !showNotifications.value
   if (showNotifications.value) {
     await notifications.fetchList()
+  }
+}
+
+async function handleNotificationClick(n) {
+  await notifications.markRead(n.id)
+
+  if (n.link && n.link.startsWith("/applications/export/") && n.link.endsWith("/download")) {
+    const jobId = n.link.split("/applications/export/")[1].split("/")[0]
+    try {
+      const { data } = await applicationService.downloadExport(jobId)
+      const url = window.URL.createObjectURL(new Blob([data], { type: "text/csv" }))
+      const link = document.createElement("a")
+      link.href = url
+      link.download = "my_applications.csv"
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (e) {
+      ui.error("Could not download export")
+    }
+    return
+  }
+
+  if (n.link) {
+    showNotifications.value = false
+    router.push(n.link)
   }
 }
 </script>
@@ -65,7 +93,7 @@ async function toggleNotifications() {
             :key="n.id"
             class="p-3 border-bottom pp-notif-item"
             :class="{ 'bg-light': !n.is_read }"
-            @click="notifications.markRead(n.id)"
+            @click="handleNotificationClick(n)"
           >
             <div class="fw-semibold small">{{ n.title }}</div>
             <div class="small text-muted">{{ n.message }}</div>
